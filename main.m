@@ -37,64 +37,62 @@ d_b1 = input(s_b1);
 
 s_metadatos = 'Metadatos ';
 d_metadatos = input(s_metadatos);
-v_ascii     = toascii (d_metadatos);
 
-windowsSize = audioInfo.TotalSamples/n_windows;
+
+windowsSize = fix(audioInfo.TotalSamples/n_windows)+max(d_b0,d_b1);
+
+windowsVectors = zeros(n_windows,windowsSize);
 
 samplesIndex = 1;
+currentWindowN = 1;
 while(samplesIndex <= audioInfo.TotalSamples)
-    letterIndex  = fix(abs(samplesIndex-1)/7)+1;
-  
-  if(letterIndex > length(v_ascii))
-    y_n(samplesIndex) = audioSamples(samplesIndex);
-    samplesIndex++;
-  else  
-    currentLetter      = v_ascii(letterIndex);
-    currentLetterBits  = flip ( bitget (currentLetter, 7:-1:1));
-    currentBit         = currentLetterBits(mod((samplesIndex-1),7)+1);
     
-    currentWindowIndex = mod(samplesIndex,n_windows);
-    currentWindowN     = fix(abs(samplesIndex-1)/7)+1;
-    
-    if(currentBit)
-      for windowSample = 1:windowsSize
-          replicaSampleIndex = windowSample*currentWindowN-d_b0;
-          
-          if(windowSample*currentWindowN > audioInfo.TotalSamples)
-            break;
-          endif
-          
-          if(replicaSampleIndex < 1 ||   replicaSampleIndex >= audioInfo.TotalSamples)
-            replicaSample = 0;
-          else
-            replicaSample = d_a0*audioSamples(replicaSampleIndex);
-          endif
-            y_n(samplesIndex) = audioSamples(windowSample*currentWindowN)+replicaSample;
-            samplesIndex++;
-            
-      endfor
-    else
-      for windowSample = 1:windowsSize
-          replicaSampleIndex = windowSample*currentWindowN-d_b1;
-          
-          if(windowSample*currentWindowN > audioInfo.TotalSamples)
-            break;
-          endif
-          
-          if(replicaSampleIndex < 1 ||   replicaSampleIndex >= audioInfo.TotalSamples)
-            replicaSample = 0;
-          else
-            replicaSample = d_a1*audioSamples(replicaSampleIndex);
-          endif
-           y_n(samplesIndex) = audioSamples(windowSample*currentWindowN)+replicaSample;
-           samplesIndex++;
-            
-      endfor
-    endif
-   endif
+    for windowSample = 1:(windowsSize-max(d_b0,d_b1))
+       if(samplesIndex > audioInfo.TotalSamples)
+          break;
+       endif
+       windowsVectors(currentWindowN,windowSample) = audioSamples(samplesIndex);
+      samplesIndex++;
+    endfor
+    currentWindowN+=1;
+ endwhile
+ 
+v_ascii       = toascii (d_metadatos);
+
+for asciiIndex =  1:length(v_ascii)
+  currentLetter      = v_ascii(asciiIndex);
+  currentLetterBits  = flip ( bitget (currentLetter, 7:-1:1));
+  for letterBitsIndex = 1:length(currentLetterBits)
+    allbitsVector(letterBitsIndex+(asciiIndex-1)*7) = currentLetterBits(letterBitsIndex);
+   endfor
+endfor
+
+if(length(allbitsVector) > n_windows)
+  printf("Se necesitan mas ventanas para procesar los metadatos\n");
+  return;
+endif
+
+for bitIndex = 1:length(allbitsVector)
   
-endwhile
+  if(allbitsVector(bitIndex) == 1)
+    a = d_a1;
+    b = d_b1;
+  else
+    a = d_a0;
+    b = d_b0;
+  endif
+  for windowsSamples = (b+1):windowsSize
+      windowsVectors(bitIndex,windowsSamples) = windowsVectors(bitIndex,windowsSamples)+a*windowsVectors(bitIndex,windowsSamples-b);
+  endfor
+endfor 
+
+y_index = 1;
+
+for windowIndex = 1:length(windowsVectors)
+  for windowsSamples = 1:windowsSize
+    y_n(y_index) = windowsVectors(windowIndex,windowsSamples);
+    y_index++;
+  endfor
+endfor
 
 audiowrite("output.wav",y_n,audioInfo.SampleRate,'BitsPerSample',audioInfo.BitsPerSample);
-
-
