@@ -76,7 +76,7 @@ currentWindowN = 1;
 
 while(samplesIndex <= audioInfo.TotalSamples)
     
-    for windowSample = 1:(windowsSize-max(d_b0,d_b1))
+    for windowSample = 1:fix(audioInfo.TotalSamples/n_windows)
        if(samplesIndex > audioInfo.TotalSamples)
           break;
        endif
@@ -115,8 +115,9 @@ for bitIndex = 1:length(allbitsVector)
   else
     a = d_a0;
     b = d_b0;
+    c = d_b1-d_b0;
   endif
-  for windowsSamples = (b+1):windowsSize
+  for windowsSamples = (b+1):fix(audioInfo.TotalSamples/n_windows)+b
       windowsVectors(bitIndex,windowsSamples) = windowsVectors(bitIndex,windowsSamples)+a*windowsVectors(bitIndex,windowsSamples-b);
   endfor
 endfor 
@@ -125,12 +126,30 @@ endfor
 %**********   Combinacion    *****************************
 %*********************************************************
 y_index = 1;
-for windowIndex = 1:(currentWindowN-1)
-  for windowsSamples = 1:windowsSize
-    y_n(y_index) = windowsVectors(windowIndex,windowsSamples);
+
+for(i = 1:audioInfo.TotalSamples)
+ y_n(i) = 0;
+endfor
+
+
+ b = max(d_b0,d_b1);
+ 
+for windowIndex = 1:currentWindowN-1
+  if(windowIndex == 1)
+    y_index-=0;
+  else
+    y_index-=b;
+  endif
+  for windowsSamples = 1:fix(audioInfo.TotalSamples/n_windows)+b
+    if(y_index > audioInfo.TotalSamples)
+      break;
+    endif
+    y_n(y_index) += windowsVectors(windowIndex,windowsSamples);
     y_index++;
   endfor
 endfor
+
+
 
 %*********************************************************
 %**********   Escritura Audio    *****************************
