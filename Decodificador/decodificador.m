@@ -63,27 +63,101 @@ endif
 
 windowsSize = fix(audioInfo.TotalSamples/n_windows);
 
-for i = 1:7
-figure();
-yx = audioSamples(windowsSize*(i-1)+1:windowsSize*(i-1)+windowsSize);
 
-X = fft(yx);
-X_ln = log(X);
+%*********************************************************
+%***************   Enventanado    ************************
+%*********************************************************
+windowsSize = fix(audioInfo.TotalSamples/n_windows);
 
-X_ln_2 = X_ln .* X_ln;
+windowsVectors = zeros(n_windows,windowsSize);
 
-rxx = ifft(X_ln_2);
+samplesIndex   = 1;
+currentWindowN = 1;
 
-y = abs(rxx);
+while(samplesIndex <= audioInfo.TotalSamples)
+    for windowSample = 1:fix(audioInfo.TotalSamples/n_windows)
+       if(samplesIndex > audioInfo.TotalSamples)
+          break;
+       endif
+       windowsVectors(currentWindowN,windowSample) = audioSamples(samplesIndex);
+      samplesIndex++;
+    endfor
+    currentWindowN+=1;
+endwhile
 
-ceroAmplitude = max(y(d_b0-4:d_b0+4));
-oneAmplitude = max(y(d_b1-4:d_b1+4));
+%*********************************************************
+%**********   Decodificación        **********************
+%*********************************************************
 
-if(ceroAmplitude < oneAmplitude)
-  bits(i) = 1;
-else
-  bits(i) = 0;
-endif
-
-plot(abs(rxx));
+for WindowNum = 1:max(n_windows, currentWindowN)-1
+  yx = windowsVectors(WindowNum, :);
+  
+  X = fft(yx);
+  X_ln = log(X);
+  X_ln_2 = X_ln .* X_ln;
+  rxx = ifft(abs(X_ln_2));
+  y = abs(rxx);
+  
+  ceroAmplitude1 = max(y(d_b0:d_b0+2));
+  oneAmplitude1 = max(y(d_b1:d_b1+2));
+  
+  ceroAmplitude2 = y(d_b0+1);
+  oneAmplitude2 = y(d_b1+1);
+ 
+  if(ceroAmplitude1 < oneAmplitude1)
+    bits1(WindowNum) = 1;
+  else
+    bits1(WindowNum) = 0;
+  endif
+  
+  if(ceroAmplitude2 < oneAmplitude2)
+    bits2(WindowNum) = 1;
+  else
+    bits2(WindowNum) = 0;
+  endif
 endfor
+
+%*********************************************************
+%**********   Error Rate        **********************
+%*********************************************************
+fid = fopen("..\\Codificador\\out.bin");
+allbitsVector = fread(fid);
+allbitsVector = allbitsVector';
+fclose(fid);
+
+fallo1 = 0;
+acierto1 = 0;
+
+fallo2 = 0;
+acierto2 = 0;
+
+TotalBits = length(allbitsVector);
+for k = 1:TotalBits
+  if allbitsVector(k) == bits1(k)
+    acierto1++;
+  else
+    fallo1++;
+  endif
+  if allbitsVector(k) == bits2(k)
+    acierto2++;
+  else
+    fallo2++;
+  endif
+endfor
+
+errorRate1 = fallo1*100/TotalBits;
+errorRate2 = fallo2*100/TotalBits;
+printf("Error con dos muestras alrededor: %d\n", errorRate1);
+printf("Error con una unica muestras: %d\n", errorRate2);
+
+
+for currentCharIndex= 1:fix(length(bits1)/bitsPerChar)
+ number = 0;
+ for i = 1:bitsPerChar
+  number += bits1(i+(bitsPerChar*(currentCharIndex-1)))*2**i;
+ endfor
+  result(currentCharIndex) = char(number);
+  number = 0;
+endfor
+
+printf("El resultado obtenido es %s",result);

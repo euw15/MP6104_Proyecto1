@@ -38,8 +38,35 @@ d_b0 = input(s_b0);
 s_b1 = 'b1 ';
 d_b1 = input(s_b1);
 
-s_metadatos = 'Metadatos ';
-d_metadatos = input(s_metadatos);
+%*********************************************************
+%******************** Metadatos **************************
+%*********************************************************
+d_metadatos = "";
+
+printf("A continuación se dará una lista de metadatos.\n");
+printf("Ingrese aquellos que desea codificar en la canción seleccionada.\n");
+printf("Los valores ingresados deben ir entre comillas (\"\").");
+
+metadatos = input("\nTítulo: ");
+if length(metadatos) != 0
+  d_metadatos = strcat (d_metadatos, "%M1:", metadatos);
+endif
+metadatos = input("\nArtista: ");
+if length(metadatos) != 0
+  d_metadatos = strcat (d_metadatos, "%M2:", metadatos);
+endif
+metadatos = input("\nAutor: ");
+if length(metadatos) != 0
+  d_metadatos = strcat (d_metadatos, "%M3:", metadatos);
+endif
+metadatos = input("\nAlbum: ");
+if length(metadatos) != 0
+  d_metadatos = strcat (d_metadatos, "%M4:", metadatos);
+endif
+metadatos = input("\nAño: ");
+if length(metadatos) != 0
+  d_metadatos = strcat (d_metadatos, "%M5:", metadatos);
+endif
 
 %*********************************************************
 %**************  Verificacion de Entradas  ***************
@@ -157,3 +184,9 @@ endfor
 audiowrite("output.wav",y_n,audioInfo.SampleRate,'BitsPerSample',audioInfo.BitsPerSample);
 
 
+%*********************************************************
+%**********   Escritura Bits codificados    **************
+%*********************************************************
+fid = fopen("out.bin","w");
+fwrite(fid, allbitsVector);
+fclose(fid);
